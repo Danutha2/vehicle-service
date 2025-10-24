@@ -1,8 +1,7 @@
-import { InputType, Int, Field } from '@nestjs/graphql';
+import { Field, Int, ObjectType } from "@nestjs/graphql";
+@ObjectType()
+export class VehicleObject {
 
-@InputType()
-export class CreateVehicleInfoInput {
- 
     @Field({nullable:false})
     first_name: string;
 
@@ -24,6 +23,6 @@ export class CreateVehicleInfoInput {
     @Field({nullable:false})
     manufactured_date: Date;
 
-    @Field(type=>Int,{nullable:false})
+    @Field()
     age_of_vehicle?: number;
 }

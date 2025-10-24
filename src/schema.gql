@@ -1,0 +1,39 @@
+# ------------------------------------------------------
+# THIS FILE WAS AUTOMATICALLY GENERATED (DO NOT MODIFY)
+# ------------------------------------------------------
+
+"""
+A date-time string at UTC, such as 2019-12-03T09:54:33Z, compliant with the date-time format.
+"""
+scalar DateTime
+
+type Mutation {
+  removeVehicleInfo(id: Int!): VehicleObject!
+  updateVehicleInfo(updateVehicleInfoInput: UpdateVehicleInfoInput!): VehicleObject!
+}
+
+type Query {
+  vehicleInfo(vin: String!): VehicleObject!
+}
+
+input UpdateVehicleInfoInput {
+  age_of_vehicle: Int
+  car_make: String
+  car_model: String
+  email: String
+  first_name: String
+  last_name: String
+  manufactured_date: DateTime
+  vin: String!
+}
+
+type VehicleObject {
+  age_of_vehicle: Float!
+  car_make: String!
+  car_model: String!
+  email: String!
+  first_name: String!
+  last_name: String!
+  manufactured_date: DateTime!
+  vin: String!
+}
