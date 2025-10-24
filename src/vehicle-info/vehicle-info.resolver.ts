@@ -2,10 +2,12 @@ import { Resolver, Query, Mutation, Args, Int } from '@nestjs/graphql';
 import { VehicleInfoService } from './vehicle-info.service';
 import { VehicleObject } from './dto/vehicle.dto';
 import { UpdateVehicleInfoInput } from './dto/update-vehicle-info.input';
+import { PaginationInput } from './dto/paginationInput.dto';
+import { PaginatedVehicleResponse } from './dto/paginationResponse';
 
 @Resolver(() => VehicleObject)
 export class VehicleInfoResolver {
-  constructor(private readonly vehicleInfoService: VehicleInfoService) {}
+  constructor(private readonly vehicleInfoService: VehicleInfoService) { }
 
   @Query(() => [VehicleObject], { name: 'vehicleInfo' })
   findAll() {
@@ -26,4 +28,10 @@ export class VehicleInfoResolver {
   removeVehicleInfo(@Args('id', { type: () => Int }) id: number) {
     return this.vehicleInfoService.remove(id);
   }
+
+  @Query(() => PaginatedVehicleResponse)
+  getVehiclesPaginated(@Args('paginationInput') paginationInput: PaginationInput) {
+    return this.vehicleInfoService.findAllPaginated(paginationInput);
+  }
+
 }

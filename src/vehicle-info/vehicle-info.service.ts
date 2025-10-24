@@ -3,15 +3,17 @@ import { UpdateVehicleInfoInput } from './dto/update-vehicle-info.input';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Vehicle } from 'src/Entity/Vehicle';
 import { Repository } from 'typeorm';
+import { PaginationInput } from './dto/paginationInput.dto';
 
 @Injectable()
 export class VehicleInfoService {
+
   private readonly logger = new Logger(VehicleInfoService.name);
 
   constructor(
     @InjectRepository(Vehicle)
     private readonly vehicleRepository: Repository<Vehicle>,
-  ) {}
+  ) { }
 
   async findAll(): Promise<Vehicle[]> {
     this.logger.log('Fetching all vehicles');
@@ -77,4 +79,23 @@ export class VehicleInfoService {
       throw new InternalServerErrorException(`Failed to delete vehicle with ID ${id}`);
     }
   }
+
+  async findAllPaginated(paginationInput: PaginationInput) {
+    const { page, pageSize } = paginationInput;
+    const skip = (page - 1) * pageSize;
+
+    const [vehicles, total] = await this.vehicleRepository.findAndCount({
+      order: { manufactured_date: 'ASC' },
+      take: pageSize,
+      skip: skip,
+    });
+
+    return {
+      data: vehicles,
+      total,
+      page,
+      pageSize,
+    };
+  }
+
 }

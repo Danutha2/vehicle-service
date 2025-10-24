@@ -12,7 +12,20 @@ type Mutation {
   updateVehicleInfo(updateVehicleInfoInput: UpdateVehicleInfoInput!): VehicleObject!
 }
 
+type PaginatedVehicleResponse {
+  data: [VehicleObject!]!
+  page: Int!
+  pageSize: Int!
+  total: Int!
+}
+
+input PaginationInput {
+  page: Int! = 1
+  pageSize: Int! = 100
+}
+
 type Query {
+  getVehiclesPaginated(paginationInput: PaginationInput!): PaginatedVehicleResponse!
   vehicleInfo(vin: String!): VehicleObject!
 }
 
