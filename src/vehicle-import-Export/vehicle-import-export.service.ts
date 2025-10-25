@@ -1,12 +1,14 @@
 import { HttpService } from '@nestjs/axios';
-import { Injectable, Logger } from '@nestjs/common';
+import { HttpException, HttpStatus, Injectable, Logger } from '@nestjs/common';
+import axios from 'axios';
 import * as fs from 'fs';
 import * as path from 'path';
 import { firstValueFrom } from 'rxjs';
 
 @Injectable()
-export class VehicleImportService {
-  private readonly logger = new Logger(VehicleImportService.name);
+export class VehicleImportExportService {
+
+  private readonly logger = new Logger(VehicleImportExportService.name);
 
   constructor(private readonly httpService: HttpService) {}
 
@@ -27,7 +29,7 @@ export class VehicleImportService {
     fs.writeFileSync(filePath, file.buffer);
     this.logger.log(`File saved at: ${filePath}`);
 
-    const jobServiceUrl = 'http://localhost:3000/job-service/import/processFile';
+    const jobServiceUrl = 'http://localhost:3000/job-service/import';
     const payload = { filePath };
     this.logger.log('Sending POST request to job-service with payload:', payload);
 
@@ -43,4 +45,36 @@ export class VehicleImportService {
       throw error;
     }
   }
-}
+
+
+      async exportVehicles(minAge: number, email: string) {
+    if (!minAge || !email) {
+      throw new HttpException(
+        'Both minAge and email are required',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    try {
+      // Call the Job Service to queue the export job
+      const response = await axios.post(
+        'http://localhost:3000/job-service/export',
+        { minAge, email },
+      );
+
+      this.logger.log(`Export job requested successfully: ${JSON.stringify(response.data)}`);
+
+      return {
+        message: 'Export job requested successfully',
+        jobServiceResponse: response.data,
+      };
+    } catch (error: any) {
+      this.logger.error(`Failed to request export job: ${error.message}`, error.stack);
+      throw new HttpException(
+        'Failed to request export job',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+  }
+

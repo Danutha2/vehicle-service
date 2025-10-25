@@ -3,14 +3,14 @@ import { AppService } from './app.service';
 import { GraphQLModule } from '@nestjs/graphql';
 import { ApolloDriver, ApolloDriverConfig } from '@nestjs/apollo';
 import { join } from 'path';
-import { VehicleImportModule } from './vehicle-import/vehicle-import.module';
+import { VehicleImportExportModule } from './vehicle-import-Export/vehicle-import-export.module';
 import { VehicleInfoModule } from './vehicle-info/vehicle-info.module';
 import { Vehicle } from './Entity/Vehicle';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
 
 @Module({
-  imports:[VehicleImportModule, VehicleInfoModule,
+  imports:[VehicleImportExportModule, VehicleInfoModule,
      GraphQLModule.forRoot<ApolloDriverConfig>({
       driver: ApolloDriver,
       playground:true,
@@ -26,7 +26,8 @@ import { TypeOrmModule } from '@nestjs/typeorm';
       database: 'vehicle',
       entities: [Vehicle],
       synchronize: true,
-    })
+    }),
+  
   ],
   controllers: [],
   providers: [AppService],
