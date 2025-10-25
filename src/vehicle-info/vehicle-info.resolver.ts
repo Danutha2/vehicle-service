@@ -34,4 +34,9 @@ export class VehicleInfoResolver {
     return this.vehicleInfoService.findAllPaginated(paginationInput);
   }
 
+  @Query(() => [VehicleObject], { name: 'searchVehicleByModel' })
+  async searchVehicleByModel(@Args('keyword') keyword: string) {
+    return this.vehicleInfoService.searchByModel(keyword);
+  }
+
 }
