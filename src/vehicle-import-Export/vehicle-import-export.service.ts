@@ -1,20 +1,114 @@
-import { HttpService } from '@nestjs/axios';
-import { HttpException, HttpStatus, Injectable, Logger } from '@nestjs/common';
-import axios from 'axios';
+// import { Injectable, Logger } from '@nestjs/common';
+// import * as fs from 'fs';
+// import { ReadStream } from 'fs';
+// import * as path from 'path';
+// import { ProducerService } from 'src/job/producer/producer.service';
+
+// @Injectable()
+// export class VehicleImportExportService {
+
+
+//   private readonly logger = new Logger(VehicleImportExportService.name);
+
+//   constructor(private readonly producerService: ProducerService) { }
+
+//   /**
+//    * Process uploaded file, save it locally, and enqueue import job
+//    */
+//   async processFile(file: Express.Multer.File) {
+//     this.logger.log('--- processFile started ---');
+//     this.logger.log(`Received file: ${file.originalname}, Size: ${file.size} bytes`);
+
+//     const uploadFolder = path.join(__dirname, '..', '..', 'uploads');
+//     if (!fs.existsSync(uploadFolder)) {
+//       fs.mkdirSync(uploadFolder, { recursive: true });
+//       this.logger.log(`Upload folder created at: ${uploadFolder}`);
+//     } else {
+//       this.logger.log(`Upload folder exists at: ${uploadFolder}`);
+//     }
+
+//     const fileName = Date.now() + '-' + file.originalname;
+//     const filePath = path.join(uploadFolder, fileName);
+//     fs.writeFileSync(filePath, file.buffer);
+//     this.logger.log(`File saved at: ${filePath}`);
+
+//     // Queue import job using ProducerService (internal)
+//     try {
+//       const result = await this.producerService.addImportJobs('importVehicle', filePath);
+//       this.logger.log(`Import job queued successfully for file: ${filePath}`);
+//       return { savedFilePath: filePath, jobResult: result };
+//     } catch (error) {
+//       this.logger.error(`Failed to queue import job: ${error.message}`, error.stack);
+//       throw error;
+//     }
+//   }
+
+//   /**
+//    * Queue export job internally via ProducerService
+//    */
+//   async exportVehicles(minAge: number, email: string) {
+//     if (!minAge || !email) {
+//       throw new Error('Both minAge and email are required');
+//     }
+
+//     try {
+//       const job = await this.producerService.addExportJobs('exportVehicle', { minAge, email });
+//       this.logger.log(`Export job queued successfully with ID ${job.id} for user ${email}`);
+//       return { jobId: job.id, data: { minAge, email } };
+//     } catch (error) {
+//       this.logger.error(`Failed to queue export job: ${error.message}`, error.stack);
+//       throw error;
+//     }
+//   }
+
+
+//   getExportedFileStream(fileName: string): ReadStream | null {
+//     const exportDir = path.join(process.cwd(), 'export');
+//     const filePath = path.join(exportDir, fileName);
+
+//     if (!fs.existsSync(filePath)) {
+//       this.logger.warn(`Requested file not found: ${filePath}`);
+//       return null;
+//     }
+
+//     const stream = fs.createReadStream(filePath);
+
+//     // Delete file after the stream is closed
+//     stream.on('close', () => {
+//       fs.unlink(filePath, (err) => {
+//         if (err) {
+//           this.logger.error(`Failed to delete file: ${filePath}`, err.stack);
+//         } else {
+//           this.logger.log(`Exported file deleted: ${filePath}`);
+//         }
+//       });
+//     });
+
+//     return stream;
+//   }
+// }
+
+import { Injectable, Logger } from '@nestjs/common';
 import * as fs from 'fs';
+import { ReadStream } from 'fs';
 import * as path from 'path';
-import { firstValueFrom } from 'rxjs';
+import { ProducerService } from 'src/job/producer/producer.service';
 
 @Injectable()
 export class VehicleImportExportService {
-
   private readonly logger = new Logger(VehicleImportExportService.name);
 
-  constructor(private readonly httpService: HttpService) {}
+  constructor(private readonly producerService: ProducerService) {}
 
-  async processFile(file: Express.Multer.File) {
+  /**
+   * Process uploaded file, save it locally, and enqueue import job
+   * @param file Uploaded file
+   * @param email User email for notifications
+   */
+  async processFile(file: Express.Multer.File, email: string) {
     this.logger.log('--- processFile started ---');
     this.logger.log(`Received file: ${file.originalname}, Size: ${file.size} bytes`);
+    this.logger.log(`Notification email: ${email}`);
 
     const uploadFolder = path.join(__dirname, '..', '..', 'uploads');
     if (!fs.existsSync(uploadFolder)) {
@@ -29,52 +123,54 @@ export class VehicleImportExportService {
     fs.writeFileSync(filePath, file.buffer);
     this.logger.log(`File saved at: ${filePath}`);
 
-    const jobServiceUrl = 'http://localhost:3000/job-service/import';
-    const payload = { filePath };
-    this.logger.log('Sending POST request to job-service with payload:', payload);
-
+    // Queue import job using ProducerService and attach email for notification
     try {
-      const response = await firstValueFrom(
-        this.httpService.post(jobServiceUrl, payload)
-      );
-      this.logger.log(`Job service response: ${JSON.stringify(response.data)}`);
-      this.logger.log('--- processFile completed successfully ---');
-      return { savedFilePath: filePath, jobServiceResponse: response.data };
+      const result = await this.producerService.addImportJobs('importVehicle', filePath, email);
+      this.logger.log(`Import job queued successfully for file: ${filePath} with notification to ${email}`);
+      return { savedFilePath: filePath, jobResult: result };
     } catch (error) {
-      this.logger.error('Error calling job-service:', error.message || error, error.stack);
+      this.logger.error(`Failed to queue import job: ${error.message}`, error.stack);
       throw error;
     }
   }
 
-
-      async exportVehicles(minAge: number, email: string) {
+  async exportVehicles(minAge: number, email: string) {
     if (!minAge || !email) {
-      throw new HttpException(
-        'Both minAge and email are required',
-        HttpStatus.BAD_REQUEST,
-      );
+      throw new Error('Both minAge and email are required');
     }
 
     try {
-      // Call the Job Service to queue the export job
-      const response = await axios.post(
-        'http://localhost:3000/job-service/export',
-        { minAge, email },
-      );
-
-      this.logger.log(`Export job requested successfully: ${JSON.stringify(response.data)}`);
-
-      return {
-        message: 'Export job requested successfully',
-        jobServiceResponse: response.data,
-      };
-    } catch (error: any) {
-      this.logger.error(`Failed to request export job: ${error.message}`, error.stack);
-      throw new HttpException(
-        'Failed to request export job',
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
+      const job = await this.producerService.addExportJobs('exportVehicle', { minAge, email });
+      this.logger.log(`Export job queued successfully with ID ${job.id} for user ${email}`);
+      return { jobId: job.id, data: { minAge, email } };
+    } catch (error) {
+      this.logger.error(`Failed to queue export job: ${error.message}`, error.stack);
+      throw error;
     }
   }
-  }
 
+  getExportedFileStream(fileName: string): ReadStream | null {
+    const exportDir = path.join(process.cwd(), 'export');
+    const filePath = path.join(exportDir, fileName);
+
+    if (!fs.existsSync(filePath)) {
+      this.logger.warn(`Requested file not found: ${filePath}`);
+      return null;
+    }
+
+    const stream = fs.createReadStream(filePath);
+
+    // Delete file after the stream is closed
+    stream.on('close', () => {
+      fs.unlink(filePath, (err) => {
+        if (err) {
+          this.logger.error(`Failed to delete file: ${filePath}`, err.stack);
+        } else {
+          this.logger.log(`Exported file deleted: ${filePath}`);
+        }
+      });
+    });
+
+    return stream;
+  }
+}

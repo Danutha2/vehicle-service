@@ -1,12 +1,13 @@
 import { Injectable, NotFoundException, InternalServerErrorException, Logger } from '@nestjs/common';
 import { UpdateVehicleInfoInput } from './dto/update-vehicle-info.input';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Vehicle } from 'src/Entity/Vehicle';
 import { Like, Repository } from 'typeorm';
 import { PaginationInput } from './dto/paginationInput.dto';
+import { Vehicle } from './entity/vehicle.entity.dto';
 
 @Injectable()
 export class VehicleInfoService {
+
 
   private readonly logger = new Logger(VehicleInfoService.name);
 
@@ -66,13 +67,13 @@ export class VehicleInfoService {
     }
   }
 
-  async remove(id: number): Promise<{ message: string }> {
+  async remove(id: number): Promise<Vehicle> {
     this.logger.log(`Removing vehicle with ID: ${id}`);
     try {
       const vehicle = await this.findOne(id);
-      await this.vehicleRepository.remove(vehicle);
+      const deltedVehicle = await this.vehicleRepository.remove(vehicle);
       this.logger.log(`Vehicle with ID ${id} deleted successfully`);
-      return { message: `Vehicle with ID ${id} deleted successfully` };
+      return deltedVehicle;
     } catch (error) {
       if (error instanceof NotFoundException) throw error;
       this.logger.error(`Failed to delete vehicle with ID ${id}`, error.stack);
@@ -81,13 +82,15 @@ export class VehicleInfoService {
   }
 
   async findAllPaginated(paginationInput: PaginationInput) {
-    const { page, pageSize } = paginationInput;
+    const page = Number(paginationInput.page) || 1;
+    const pageSize = Number(paginationInput.pageSize) || 2;
+
     const skip = (page - 1) * pageSize;
 
     const [vehicles, total] = await this.vehicleRepository.findAndCount({
       order: { manufactured_date: 'ASC' },
       take: pageSize,
-      skip: skip,
+      skip,
     });
 
     return {
@@ -98,6 +101,7 @@ export class VehicleInfoService {
     };
   }
 
+
   async searchByModel(keyword: string): Promise<Vehicle[]> {
     this.logger.log(`Searching vehicles by model with keyword: ${keyword}`);
 
@@ -107,9 +111,13 @@ export class VehicleInfoService {
     const results = await this.vehicleRepository.find({
       where: { car_model: Like(`${searchPattern}%`) }
     });
-    
+
     this.logger.log(`Found ${results.length} matching vehicles`);
     return results;
+  }
+
+  forRecords(vin: string) {
+    throw new Error("Method not implemented.");
   }
 
 }

@@ -1,22 +1,22 @@
 import { Module } from '@nestjs/common';
 import { AppService } from './app.service';
 import { GraphQLModule } from '@nestjs/graphql';
-import { ApolloDriver, ApolloDriverConfig } from '@nestjs/apollo';
 import { join } from 'path';
 import { VehicleImportExportModule } from './vehicle-import-Export/vehicle-import-export.module';
 import { VehicleInfoModule } from './vehicle-info/vehicle-info.module';
-import { Vehicle } from './Entity/Vehicle';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { Vehicle } from './vehicle-info/entity/vehicle.entity.dto';
+import { BullModule } from '@nestjs/bullmq';
+import { JobModule } from './job/job.module';
+import { ConfigModule } from '@nestjs/config';
 
 
 @Module({
-  imports:[VehicleImportExportModule, VehicleInfoModule,
-     GraphQLModule.forRoot<ApolloDriverConfig>({
-      driver: ApolloDriver,
-      playground:true,
-      autoSchemaFile: join(process.cwd(), 'src/schema.gql'),
-      sortSchema: true,
-    }),
+  imports:[
+    VehicleImportExportModule, 
+    VehicleInfoModule,
+    
+    
     TypeOrmModule.forRoot({
       type: 'postgres',
       host: 'localhost',
@@ -27,7 +27,18 @@ import { TypeOrmModule } from '@nestjs/typeorm';
       entities: [Vehicle],
       synchronize: true,
     }),
-  
+
+    BullModule.forRoot({
+      connection: {
+        host: 'localhost',
+        port: 6379,
+      },
+    }),
+   ConfigModule.forRoot({
+      isGlobal: true, 
+    }),
+
+    JobModule,
   ],
   controllers: [],
   providers: [AppService],

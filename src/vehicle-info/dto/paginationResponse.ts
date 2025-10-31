@@ -1,10 +1,10 @@
 import { ObjectType, Field, Int } from '@nestjs/graphql';
-import { VehicleObject } from './vehicle.dto';
+import { Vehicle } from '../entity/vehicle.entity.dto';
 
 @ObjectType()
 export class PaginatedVehicleResponse {
-  @Field(() => [VehicleObject])
-  data: VehicleObject[];
+  @Field(() => [Vehicle])
+  data: Vehicle[];
 
   @Field(() => Int)
   total: number;
