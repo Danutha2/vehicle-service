@@ -112,5 +112,6 @@ export class VehicleImportExportController {
     res.setHeader('Content-Type', 'text/csv');
 
     fileStream.pipe(res);
+
   }
 }

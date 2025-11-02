@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException, InternalServerErrorException, Logger } from '@nestjs/common';
 import { UpdateVehicleInfoInput } from './dto/update-vehicle-info.input';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Like, Repository } from 'typeorm';
+import { ILike, Like, Repository } from 'typeorm';
 import { PaginationInput } from './dto/paginationInput.dto';
 import { Vehicle } from './entity/vehicle.entity.dto';
 
@@ -109,7 +109,7 @@ export class VehicleInfoService {
     this.logger.debug(`Search pattern ${searchPattern}`)
 
     const results = await this.vehicleRepository.find({
-      where: { car_model: Like(`${searchPattern}%`) }
+      where: { car_model: ILike(`${searchPattern}%`) }
     });
 
     this.logger.log(`Found ${results.length} matching vehicles`);

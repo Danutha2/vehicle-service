@@ -103,12 +103,20 @@ export class VehicleConsumer extends WorkerHost {
         importedCount++;
       }
 
-      let message = '';
+      // ✅ Delete file after successful import
+      try {
+        fs.unlinkSync(filePath);
+        this.logger.log(`[IMPORT VEHICLE] File deleted after processing: ${filePath}`);
+      } catch (deleteError) {
+        this.logger.warn(`[IMPORT VEHICLE] Failed to delete file: ${filePath} | ${deleteError.message}`);
+      }
 
+      // ✅ Construct message for user
+      let message = '';
       if (importedCount > 0 && skippedCount > 0) {
-        message = `🎉 Import Successful! ${importedCount} new vehicles added, ${skippedCount} duplicates skipped to keep your data clean. 🚗💨`;
+        message = `🎉 Import Successful! ${importedCount} new vehicles added, ${skippedCount} duplicates skipped. 🚗💨`;
       } else if (importedCount > 0) {
-        message = `🎉 Import Successful! ${importedCount} new vehicles added. Great job! 🚗💨`;
+        message = `🎉 Import Successful! ${importedCount} new vehicles added. 🚗💨`;
       } else if (skippedCount > 0) {
         message = `⚠️ No new vehicles were added because ${skippedCount} duplicates were skipped.`;
       } else {
@@ -116,8 +124,8 @@ export class VehicleConsumer extends WorkerHost {
       }
 
       this.logger.log(`[IMPORT VEHICLE] ${message}`);
-
       await this.notifyUser(email, message, path.basename(filePath));
+
       return { importedCount, skippedCount };
     } catch (error) {
       this.logger.error(`[IMPORT VEHICLE ERROR] File: ${filePath}`, error.stack);
@@ -125,8 +133,6 @@ export class VehicleConsumer extends WorkerHost {
       throw error;
     }
   }
-
-
 
   private async handleExportVehicle(data: { minAge: number; email: string }) {
     const { minAge, email } = data;
