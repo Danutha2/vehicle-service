@@ -53,19 +53,45 @@ export class VehicleInfoService {
     }
   }
 
+  // async update(vin: string, updateVehicleInfoInput: UpdateVehicleInfoInput): Promise<Vehicle> {
+  //   this.logger.log(`Updating vehicle with VIN: ${vin}`);
+  //   try {
+  //     const vehicle = await this.findOne(vin);
+  //     Object.assign(vehicle, updateVehicleInfoInput);
+  //     const updatedVehicle = await this.vehicleRepository.save(vehicle);
+  //     this.logger.log(`Vehicle updated successfully: ${JSON.stringify(updatedVehicle)}`);
+  //     return updatedVehicle;
+  //   } catch (error) {
+  //     this.logger.error(`Failed to update vehicle with VIN ${vin}`, error.stack);
+  //     throw new InternalServerErrorException(`Failed to update vehicle with VIN ${vin}`);
+  //   }
+  // }
+
   async update(vin: string, updateVehicleInfoInput: UpdateVehicleInfoInput): Promise<Vehicle> {
-    this.logger.log(`Updating vehicle with VIN: ${vin}`);
-    try {
-      const vehicle = await this.findOne(vin);
-      Object.assign(vehicle, updateVehicleInfoInput);
-      const updatedVehicle = await this.vehicleRepository.save(vehicle);
-      this.logger.log(`Vehicle updated successfully: ${JSON.stringify(updatedVehicle)}`);
-      return updatedVehicle;
-    } catch (error) {
-      this.logger.error(`Failed to update vehicle with VIN ${vin}`, error.stack);
-      throw new InternalServerErrorException(`Failed to update vehicle with VIN ${vin}`);
+  this.logger.log(`Updating vehicle with VIN: ${vin}`);
+  try {
+    const existingVehicle = await this.findOne(vin);
+
+    // preload combines existing entity with new data
+    const vehicle = await this.vehicleRepository.preload({
+      id: existingVehicle.id,
+      ...updateVehicleInfoInput,
+    });
+
+    if (!vehicle) {
+      this.logger.warn(`Vehicle with VIN ${vin} not found for update`);
+      throw new NotFoundException(`Vehicle with VIN ${vin} not found`);
     }
+
+    const updatedVehicle = await this.vehicleRepository.save(vehicle);
+    this.logger.log(`Vehicle updated successfully: ${JSON.stringify(updatedVehicle)}`);
+    return updatedVehicle;
+  } catch (error) {
+    this.logger.error(`Failed to update vehicle with VIN ${vin}`, error.stack);
+    throw new InternalServerErrorException(`Failed to update vehicle with VIN ${vin}`);
   }
+}
+
 
   async remove(id: number): Promise<Vehicle> {
     this.logger.log(`Removing vehicle with ID: ${id}`);
