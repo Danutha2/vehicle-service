@@ -108,10 +108,15 @@ export class VehicleInfoService {
   }
 
   async findAllPaginated(paginationInput: PaginationInput) {
+  this.logger.log('Fetching paginated vehicles');
+
+  try {
     const page = Number(paginationInput.page) || 1;
-    const pageSize = Number(paginationInput.pageSize) || 2;
+    const pageSize = Number(paginationInput.pageSize) || 100;
 
     const skip = (page - 1) * pageSize;
+
+    this.logger.debug(`Pagination params - page: ${page}, pageSize: ${pageSize}, skip: ${skip}`);
 
     const [vehicles, total] = await this.vehicleRepository.findAndCount({
       order: { manufactured_date: 'ASC' },
@@ -119,13 +124,20 @@ export class VehicleInfoService {
       skip,
     });
 
+    this.logger.log(`Fetched ${vehicles.length} vehicles out of total ${total}`);
+
     return {
       data: vehicles,
       total,
       page,
       pageSize,
     };
+  } catch (error) {
+    this.logger.error('Failed to fetch paginated vehicles', error.stack);
+    throw new InternalServerErrorException('Error fetching paginated vehicles');
   }
+}
+
 
 
   async searchByModel(keyword: string): Promise<Vehicle[]> {
