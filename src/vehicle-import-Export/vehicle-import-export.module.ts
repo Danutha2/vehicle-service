@@ -6,10 +6,11 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { Vehicle } from 'src/vehicle-info/entity/vehicle.entity.dto';
 import { ProducerService } from 'src/job/producer/producer.service';
 import { JobModule } from 'src/job/job.module';
+import { VehicleCleanupService } from './clean-up-service';
 
 @Module({
   imports:[HttpModule,TypeOrmModule.forFeature([Vehicle]),JobModule],
   controllers: [VehicleImportExportController],
-  providers: [VehicleImportExportService]
+  providers: [VehicleImportExportService,VehicleCleanupService]
 })
 export class VehicleImportExportModule {}

@@ -12,12 +12,16 @@ import {
 import { FileInterceptor } from '@nestjs/platform-express';
 import { VehicleImportExportService } from './vehicle-import-export.service';
 import express from 'express';
+import * as fs from 'fs';
+import path from 'path';
+
 
 @Controller('vehicle-service')
 export class VehicleImportExportController {
   constructor(
     private readonly vehicleImportExportService: VehicleImportExportService,
   ) {}
+
 
   /**
    * Import endpoint now accepts both file and email
@@ -47,6 +51,10 @@ export class VehicleImportExportController {
     @Query('fileName') fileName: string,
     @Res() res: express.Response,
   ) {
+
+  const exportDir = path.join(process.cwd(), 'export');
+  const filePath = path.join(exportDir, fileName);
+
     const fileStream = await this.vehicleImportExportService.getExportedFileStream(fileName);
 
     if (!fileStream) {
@@ -57,6 +65,9 @@ export class VehicleImportExportController {
     res.setHeader('Content-Type', 'text/csv');
 
     fileStream.pipe(res);
+
+
+   
 
   }
 }

@@ -9,14 +9,17 @@ import { Vehicle } from './vehicle-info/entity/vehicle.entity.dto';
 import { BullModule } from '@nestjs/bullmq';
 import { JobModule } from './job/job.module';
 import { ConfigModule } from '@nestjs/config';
+import { ScheduleModule } from '@nestjs/schedule';
 
 
 @Module({
-  imports:[
-    VehicleImportExportModule, 
+  imports: [
+    ScheduleModule.forRoot()
+    ,
+    VehicleImportExportModule,
     VehicleInfoModule,
-    
-    
+
+
     TypeOrmModule.forRoot({
       type: 'postgres',
       host: 'localhost',
@@ -34,8 +37,8 @@ import { ConfigModule } from '@nestjs/config';
         port: 6379,
       },
     }),
-   ConfigModule.forRoot({
-      isGlobal: true, 
+    ConfigModule.forRoot({
+      isGlobal: true,
     }),
 
     JobModule,

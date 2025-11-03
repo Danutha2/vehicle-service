@@ -70,17 +70,6 @@ export class VehicleImportExportService {
 
     const stream = fs.createReadStream(filePath);
 
-    // Delete file after the stream is closed
-    stream.on('finish', () => {
-      fs.unlink(filePath, (err) => {
-        if (err) {
-          this.logger.error(`Failed to delete file: ${filePath}`, err.stack);
-        } else {
-          this.logger.log(`Exported file deleted: ${filePath}`);
-        }
-      });
-    });
-
     return stream;
   }
 }

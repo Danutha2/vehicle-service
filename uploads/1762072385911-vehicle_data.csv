@@ -1,6 +1,0 @@
-first_name,last_name,email,car_make,car_model,vin,manufactured_date
-John,Doe,john.doe@example.com,Mitsubishi,Lancer,VIN001,2010-05-15
-Jane,Smith,jane.smith@example.com,MDM,Galant,VIN002,2018-11-20
-Peter,Jones,peter.jones@example.com,Honda,Civic,VIN003,2022-01-30
-Mary,Williams,mary.w@example.com,Toyota,Camry,VIN004,2005-07-22
-David,Brown,d.brown@example.com,Mitsubishi,Outlander,VIN005,2015-03-10

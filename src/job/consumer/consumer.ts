@@ -103,15 +103,7 @@ export class VehicleConsumer extends WorkerHost {
         importedCount++;
       }
 
-      // ✅ Delete file after successful import
-      try {
-        fs.unlinkSync(filePath);
-        this.logger.log(`[IMPORT VEHICLE] File deleted after processing: ${filePath}`);
-      } catch (deleteError) {
-        this.logger.warn(`[IMPORT VEHICLE] Failed to delete file: ${filePath} | ${deleteError.message}`);
-      }
-
-      // ✅ Construct message for user
+      //  Construct message for user
       let message = '';
       if (importedCount > 0 && skippedCount > 0) {
         message = `🎉 Import Successful! ${importedCount} new vehicles added, ${skippedCount} duplicates skipped. 🚗💨`;
