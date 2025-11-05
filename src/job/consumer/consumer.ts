@@ -1,7 +1,7 @@
 import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Job } from 'bullmq';
-import { Repository } from 'typeorm';
+import { MoreThanOrEqual, Repository } from 'typeorm';
 import * as XLSX from 'xlsx';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -136,11 +136,7 @@ export class VehicleConsumer extends WorkerHost {
     this.logger.log(`[EXPORT VEHICLE] Job received | minAge=${minAge}, email=${email}`);
 
     try {
-      const vehicles = await this.vehicleRepository
-        .createQueryBuilder('vehicle')
-        .where('vehicle.age_of_vehicle > :minAge', { minAge })
-        .getMany();
-
+      const vehicles = await this.vehicleRepository.find({ where: { age_of_vehicle: MoreThanOrEqual(minAge) } })
       if (vehicles.length === 0) {
         this.logger.warn(`[EXPORT VEHICLE] No vehicles found older than ${minAge} years`);
         await this.notifyUser(email, `No vehicles found older than ${minAge} years.`, null);
@@ -164,7 +160,7 @@ export class VehicleConsumer extends WorkerHost {
         age_of_vehicle: v.age_of_vehicle,
       }));
 
-      const exportDir = this.configService.get<string>('EXPORT_DIR') || path.join(process.cwd(), 'export');
+      const exportDir = path.join(process.cwd(), 'export');
       if (!fs.existsSync(exportDir)) fs.mkdirSync(exportDir, { recursive: true });
 
       const fileName = `export_vehicles_${Date.now()}.csv`;
@@ -196,7 +192,7 @@ export class VehicleConsumer extends WorkerHost {
     try {
       await axios.post(notificationServiceUrl, { email, message, fileName });
       this.logger.log(`[NOTIFICATION] Sent to ${email}: ${message}`);
-    } catch (err: any) {
+    } catch (err) {
       this.logger.error(`[NOTIFICATION ERROR] Failed to send to ${email}: ${err.message}`);
     }
   }
@@ -204,8 +200,6 @@ export class VehicleConsumer extends WorkerHost {
   private calculateAge(manufacturedDate: Date): number {
     const today = new Date();
     let age = today.getFullYear() - manufacturedDate.getFullYear();
-    const m = today.getMonth() - manufacturedDate.getMonth();
-    if (m < 0 || (m === 0 && today.getDate() < manufacturedDate.getDate())) age--;
     return age;
   }
 }
