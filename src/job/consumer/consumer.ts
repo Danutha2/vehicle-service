@@ -63,9 +63,13 @@ export class VehicleConsumer extends WorkerHost {
       } else if (ext === '.xlsx' || ext === '.xls') {
         this.logger.debug(`[IMPORT VEHICLE] Parsing Excel file: ${filePath}`);
         const workbook = XLSX.readFile(filePath);
-        const sheetName = workbook.SheetNames[0];
-        const sheet = workbook.Sheets[sheetName];
-        parsedData = XLSX.utils.sheet_to_json(sheet);
+        parsedData = [];
+
+        workbook.SheetNames.forEach(sheetName => {
+          const sheet = workbook.Sheets[sheetName];
+          const sheetData = XLSX.utils.sheet_to_json(sheet);
+          parsedData.push(...sheetData);
+        });
       } else {
         throw new Error('Unsupported file type');
       }
@@ -76,16 +80,6 @@ export class VehicleConsumer extends WorkerHost {
       for (const row of parsedData) {
         const manufacturedDate = new Date(row.manufactured_date);
         const age_of_vehicle = this.calculateAge(manufacturedDate);
-
-        const existingVehicle = await this.vehicleRepository.findOne({
-          where: { vin: row.vin },
-        });
-
-        if (existingVehicle) {
-          skippedCount++;
-          this.logger.warn(`[IMPORT VEHICLE] Skipped duplicate VIN: ${row.vin}`);
-          continue;
-        }
 
         const vehicleDto: CreateVehicleDto = {
           first_name: row.first_name,
@@ -98,17 +92,26 @@ export class VehicleConsumer extends WorkerHost {
           age_of_vehicle: age_of_vehicle,
         };
 
+        try {
         const vehicle = this.vehicleRepository.create(vehicleDto);
         await this.vehicleRepository.save(vehicle);
         importedCount++;
+      } catch (error) {
+        // Handle duplicate VIN
+        if (error.code === '23505') {
+          skippedCount++;
+          continue;
+        }
+        this.logger.error(`[IMPORT VEHICLE] Failed to import VIN: ${row.vin}`, error.stack);
+      }
       }
 
       //  Construct message for user
       let message = '';
       if (importedCount > 0 && skippedCount > 0) {
-        message = `🎉 Import Successful! ${importedCount} new vehicles added, ${skippedCount} duplicates skipped. 🚗💨`;
+        message = `🎉 Import Successful! ${importedCount} new vehicles added, ${skippedCount} duplicates skipped. 🚗`;
       } else if (importedCount > 0) {
-        message = `🎉 Import Successful! ${importedCount} new vehicles added. 🚗💨`;
+        message = `🎉 Import Successful! ${importedCount} new vehicles added. 🚗`;
       } else if (skippedCount > 0) {
         message = `⚠️ No new vehicles were added because ${skippedCount} duplicates were skipped.`;
       } else {
@@ -116,10 +119,12 @@ export class VehicleConsumer extends WorkerHost {
       }
 
       this.logger.log(`[IMPORT VEHICLE] ${message}`);
+      
       await this.notifyUser(email, message, path.basename(filePath));
 
       return { importedCount, skippedCount };
     } catch (error) {
+      
       this.logger.error(`[IMPORT VEHICLE ERROR] File: ${filePath}`, error.stack);
       await this.notifyUser(email, `❌ Import failed for file ${path.basename(filePath)}.`, null);
       throw error;
