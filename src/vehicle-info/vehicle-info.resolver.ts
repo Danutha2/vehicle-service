@@ -4,7 +4,7 @@ import { Vehicle } from './entity/vehicle.entity.dto';
 import { UpdateVehicleInfoInput } from './dto/update-vehicle-info.input';
 import { PaginationInput } from './dto/paginationInput.dto';
 import { PaginatedVehicleResponse } from './dto/paginationResponse';
-import { Logger } from '@nestjs/common';
+import { InternalServerErrorException, Logger } from '@nestjs/common';
 
 @Resolver(() => Vehicle)
 export class VehicleInfoResolver {
@@ -21,7 +21,7 @@ export class VehicleInfoResolver {
       return result;
     } catch (error) {
       this.logger.error('Failed to fetch all vehicles', error.stack);
-      throw error;
+      throw new InternalServerErrorException('Failed to fetch vehicles');
     }
   }
 

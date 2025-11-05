@@ -51,7 +51,7 @@ export class VehicleConsumer extends WorkerHost {
     let parsedData: any[] = [];
 
     try {
-      // ✅ Read file
+      //  Read file
       if (ext === '.csv') {
         this.logger.debug(`[IMPORT VEHICLE] Parsing CSV file: ${filePath}`);
         const fileContent = fs.readFileSync(filePath, 'utf8');

@@ -1,13 +1,13 @@
-import { 
-  Body, 
-  Controller, 
-  Post, 
+import {
+  Body,
+  Controller,
+  Post,
   Get,
-  Query, 
-  UploadedFile, 
-  UseInterceptors, 
-  Res, 
-  NotFoundException 
+  Query,
+  UploadedFile,
+  UseInterceptors,
+  Res,
+  NotFoundException
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { VehicleImportExportService } from './vehicle-import-export.service';
@@ -52,8 +52,8 @@ export class VehicleImportExportController {
     @Res() res: express.Response,
   ) {
 
-  const exportDir = path.join(process.cwd(), 'export');
-  const filePath = path.join(exportDir, fileName);
+    const exportDir = path.join(process.cwd(), 'export');
+    const filePath = path.join(exportDir, fileName);
 
     const fileStream = await this.vehicleImportExportService.getExportedFileStream(fileName);
 
@@ -67,7 +67,7 @@ export class VehicleImportExportController {
     fileStream.pipe(res);
 
 
-   
+
 
   }
 }

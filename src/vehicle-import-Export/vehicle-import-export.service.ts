@@ -16,9 +16,8 @@ export class VehicleImportExportService {
    * @param email User email for notifications
    */
   async processFile(file: Express.Multer.File, email: string) {
-    this.logger.log('--- processFile started ---');
-    this.logger.log(`Received file: ${file.originalname}, Size: ${file.size} bytes`);
-    this.logger.log(`Notification email: ${email}`);
+    this.logger.debug(`Received file: ${file.originalname}, Size: ${file.size} bytes`);
+    this.logger.debug(`User email: ${email}`);
 
     const uploadFolder = path.join(__dirname, '..', '..', 'uploads');
     if (!fs.existsSync(uploadFolder)) {
@@ -35,7 +34,7 @@ export class VehicleImportExportService {
 
     // Queue import job using ProducerService and attach email for notification
     try {
-      const result = await this.producerService.addImportJobs('importVehicle', filePath, email);
+      const result = await this.producerService.addJob('importVehicle',{filePath, email} );
       this.logger.log(`Import job queued successfully for file: ${filePath} with notification to ${email}`);
       return { savedFilePath: filePath, jobResult: result };
     } catch (error) {
@@ -50,7 +49,7 @@ export class VehicleImportExportService {
     }
 
     try {
-      const job = await this.producerService.addExportJobs('exportVehicle', { minAge, email });
+      const job = await this.producerService.addJob('exportVehicle', { minAge, email });
       this.logger.log(`Export job queued successfully with ID ${job.id} for user ${email}`);
       return { jobId: job.id, data: { minAge, email } };
     } catch (error) {

@@ -24,7 +24,7 @@ export class VehicleInfoService {
       return vehicles;
     } catch (error) {
       this.logger.error('Failed to fetch vehicles', error.stack);
-      throw new InternalServerErrorException('Failed to fetch vehicles');
+      throw error;
     }
   }
 
@@ -48,8 +48,7 @@ export class VehicleInfoService {
       return vehicle;
     } catch (error) {
       if (error instanceof NotFoundException) throw error;
-      this.logger.error('Error finding vehicle', error.stack);
-      throw new InternalServerErrorException('Error finding vehicle');
+      throw error;
     }
   }
 
@@ -134,10 +133,9 @@ export class VehicleInfoService {
     };
   } catch (error) {
     this.logger.error('Failed to fetch paginated vehicles', error.stack);
-    throw new InternalServerErrorException('Error fetching paginated vehicles');
+    throw error;
   }
 }
-
 
 
   async searchByModel(keyword: string): Promise<Vehicle[]> {
