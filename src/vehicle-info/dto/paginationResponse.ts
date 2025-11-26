@@ -1,5 +1,5 @@
 import { ObjectType, Field, Int } from '@nestjs/graphql';
-import { Vehicle } from '../entity/vehicle.entity.dto';
+import { Vehicle } from '../entity/vehicle.entity';
 
 @ObjectType()
 export class PaginatedVehicleResponse {

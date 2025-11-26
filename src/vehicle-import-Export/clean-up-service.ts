@@ -7,7 +7,7 @@ import * as path from 'path';
 export class VehicleCleanupService {
   private readonly logger = new Logger(VehicleCleanupService.name);
 
-  @Cron(CronExpression.EVERY_MINUTE)
+  @Cron(CronExpression.EVERY_10_MINUTES)
   handleExportCleanup() {
     const exportDir = path.join(process.cwd(), 'export');
     const uploadDir = path.join(process.cwd(), 'uploads');

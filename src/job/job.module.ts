@@ -4,7 +4,7 @@ import { BullModule } from '@nestjs/bullmq';
 import { VehicleConsumer } from './consumer/consumer';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { HttpModule, HttpService } from '@nestjs/axios';
-import { Vehicle } from 'src/vehicle-info/entity/vehicle.entity.dto';
+import { Vehicle } from 'src/vehicle-info/entity/vehicle.entity';
 
 @Module({
     imports: [

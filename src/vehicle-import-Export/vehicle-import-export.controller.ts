@@ -10,16 +10,18 @@ import {
   NotFoundException,
   BadRequestException,
   InternalServerErrorException,
+  Logger,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { VehicleImportExportService } from './vehicle-import-export.service';
 import express from 'express';
 import * as fs from 'fs';
-import path from 'path';
 import { diskStorage } from 'multer';
 
 @Controller('vehicle-service')
 export class VehicleImportExportController {
+  private readonly logger = new Logger(VehicleImportExportController.name);
+
   constructor(
     private readonly vehicleImportExportService: VehicleImportExportService,
   ) {}
@@ -55,14 +57,36 @@ export class VehicleImportExportController {
     @UploadedFile() file: Express.Multer.File,
     @Body('email') email: string,
   ) {
-    // Ensures an email is provided for notification purposes
+    this.logger.log(`Received file upload request for email: ${email}`);
+
     if (!email) {
+      this.logger.warn('Upload failed — missing email address.');
       throw new BadRequestException('Email is required for notifications');
     }
 
+    if (!file) {
+      this.logger.warn(`Upload failed — no file provided for ${email}`);
+      throw new BadRequestException('No file uploaded');
+    }
+
+    this.logger.debug(
+      `Uploading file: ${file.originalname}, size: ${file.size} bytes`,
+    );
+
     try {
-      return await this.vehicleImportExportService.processFile(file, email);
+      const result = await this.vehicleImportExportService.processFile(
+        file,
+        email,
+      );
+      this.logger.log(
+        `File ${file.filename} queued successfully for processing for ${email}`,
+      );
+      return result;
     } catch (error) {
+      this.logger.error(
+        `File import failed for ${email}: ${error.message}`,
+        error.stack,
+      );
       throw new InternalServerErrorException(
         `File import failed: ${error.message}`,
       );
@@ -77,9 +101,30 @@ export class VehicleImportExportController {
     @Body('minAge') minAge: number,
     @Body('email') email: string,
   ) {
+    if (!minAge || !email) {
+      this.logger.error('Min age and Email are required to export');
+      throw new BadRequestException('Both minAge and email are required');
+    }
+
+    if (minAge<0){
+      this.logger.error('Min age can not be negative');
+      throw new BadRequestException('Min age can not be negative')
+    }
+
+    this.logger.log(`Export request received — email: ${email}, minAge: ${minAge}`);
+
     try {
-      return await this.vehicleImportExportService.exportVehicles(minAge, email);
+      const result = await this.vehicleImportExportService.exportVehicles(
+        minAge,
+        email,
+      );
+      this.logger.log(`Export task created successfully for ${email}`);
+      return result;
     } catch (error) {
+      this.logger.error(
+        `Export job creation failed for ${email}: ${error.message}`,
+        error.stack,
+      );
       throw new InternalServerErrorException(
         `Export job could not be created: ${error.message}`,
       );
@@ -87,7 +132,7 @@ export class VehicleImportExportController {
   }
 
   /**
-   *  allow downloading a previously exported CSV file
+   * Allow downloading a previously exported CSV file
    * - Uses streaming for efficient file transfer
    */
   @Get('download')
@@ -95,29 +140,37 @@ export class VehicleImportExportController {
     @Query('fileName') fileName: string,
     @Res() res: express.Response,
   ) {
+    this.logger.log(`Download request received for file: ${fileName}`);
     try {
       const fileStream =
         await this.vehicleImportExportService.getExportedFileStream(fileName);
 
-      // Ensures . actually exists before responding
       if (!fileStream) {
+        this.logger.warn(`Download failed — file not found: ${fileName}`);
         throw new NotFoundException(`File ${fileName} not found`);
       }
 
-      // Sets headers to force browser to download instead of display
+      this.logger.debug(`Streaming file to client: ${fileName}`);
+
       res.setHeader(
         'Content-Disposition',
         `attachment; filename="${fileName}"`,
       );
       res.setHeader('Content-Type', 'text/csv');
 
-      // Streams file directly to client
       fileStream.pipe(res);
+      fileStream.on('end', () => {
+        this.logger.log(`File download completed: ${fileName}`);
+      });
     } catch (error) {
-
-      if( error instanceof NotFoundException){
+      if (error instanceof NotFoundException) {
         throw error;
       }
+
+      this.logger.error(
+        `Failed to download file ${fileName}: ${error.message}`,
+        error.stack,
+      );
       throw new InternalServerErrorException(
         `Failed to download file: ${error.message}`,
       );

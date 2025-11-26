@@ -1,10 +1,10 @@
 import { Resolver, Query, Mutation, Args, Int, ResolveReference } from '@nestjs/graphql';
 import { VehicleInfoService } from './vehicle-info.service';
-import { Vehicle } from './entity/vehicle.entity.dto';
+import { Vehicle } from './entity/vehicle.entity';
 import { UpdateVehicleInfoInput } from './dto/update-vehicle-info.input';
 import { PaginationInput } from './dto/paginationInput.dto';
 import { PaginatedVehicleResponse } from './dto/paginationResponse';
-import { InternalServerErrorException, Logger } from '@nestjs/common';
+import { InternalServerErrorException, Logger, NotFoundException } from '@nestjs/common';
 
 @Resolver(() => Vehicle)
 export class VehicleInfoResolver {
@@ -26,10 +26,10 @@ export class VehicleInfoResolver {
   }
 
   @Query(() => Vehicle, { name: 'vehicleInfo' })
-  async findOne(@Args('vin') vin: string) {
+  async findVehicle(@Args('vin') vin: string) {
     this.logger.log(`Start: Fetching vehicle with VIN: ${vin}`);
     try {
-      const vehicle = await this.vehicleInfoService.findOne(vin);
+      const vehicle = await this.vehicleInfoService.findVehicle(vin);
       if (!vehicle) {
         this.logger.warn(`Vehicle with VIN ${vin} not found`);
       } else {
@@ -37,8 +37,15 @@ export class VehicleInfoResolver {
       }
       return vehicle;
     } catch (error) {
+
+      if(error instanceof NotFoundException){
+        this.logger.error(`Vehicle Not found for vin ${vin}`);
+        throw error
+      }
+      
       this.logger.error(`Failed to fetch vehicle with VIN: ${vin}`, error.stack);
-      throw error;
+
+      throw new InternalServerErrorException('Failed to fetch vehicles');
     }
   }
 
@@ -47,12 +54,16 @@ export class VehicleInfoResolver {
     this.logger.log(`Start: Updating vehicle info for VIN: ${updateVehicleInfoInput.vin}`);
     this.logger.debug(`Update input: ${JSON.stringify(updateVehicleInfoInput)}`);
     try {
-      const updatedVehicle = await this.vehicleInfoService.update(updateVehicleInfoInput.vin, updateVehicleInfoInput);
+      const updatedVehicle = await this.vehicleInfoService.update( updateVehicleInfoInput);
       this.logger.log(`Success: Updated vehicle info for VIN: ${updateVehicleInfoInput.vin}`);
       return updatedVehicle;
     } catch (error) {
-      this.logger.error(`Failed to update vehicle with VIN: ${updateVehicleInfoInput.vin}`, error.stack);
-      throw error;
+      if (error instanceof NotFoundException){
+      this.logger.error(`Vehicle not found for update (VIN: ${updateVehicleInfoInput.vin})`);
+      throw new NotFoundException(`Vehicle with VIN ${updateVehicleInfoInput.vin} not found`);
+      }
+      this.logger.error(`Error while updating vehicle (VIN: ${updateVehicleInfoInput.vin}`, error.stack);
+      throw new InternalServerErrorException(`error while updating vehicle with VIN ${updateVehicleInfoInput.vin}`);
     }
   }
 
@@ -64,8 +75,12 @@ export class VehicleInfoResolver {
       this.logger.log(`Success: Removed vehicle with ID: ${id}`);
       return removedVehicle;
     } catch (error) {
-      this.logger.error(`Failed to remove vehicle with ID: ${id}`, error.stack);
-      throw error;
+      if (error instanceof NotFoundException){
+      this.logger.error(`Vehicle not found for Delete (ID: ${id})`);
+      throw new NotFoundException(`Vehicle with VIN ${id} not found`);
+      }
+      this.logger.error(`Error while Deleting vehicle (ID: ${id}`, error.stack);
+      throw new InternalServerErrorException(`Error while delete vehicle with ID ${id}`);
     }
   }
 
@@ -78,7 +93,7 @@ export class VehicleInfoResolver {
       return paginatedResult;
     } catch (error) {
       this.logger.error('Failed to fetch paginated vehicles', error.stack);
-      throw error;
+      throw new InternalServerErrorException(`Error while Loading page`);
     }
   }
 
@@ -91,24 +106,24 @@ export class VehicleInfoResolver {
       return vehicles;
     } catch (error) {
       this.logger.error(`Failed to search vehicles by model with keyword: "${keyword}"`, error.stack);
-      throw error;
+      throw new InternalServerErrorException(`Error while searching model`);
     }
   }
 
-  @ResolveReference()
-  async resolveReference(reference: { __typename: string; vin: string }): Promise<Vehicle> {
-    this.logger.log(`Start: Resolving reference for vehicle with VIN: ${reference.vin}`);
-    try {
-      const vehicle = await this.vehicleInfoService.findOne(reference.vin);
-      if (!vehicle) {
-        this.logger.warn(`Reference resolution failed for VIN: ${reference.vin}`);
-      } else {
-        this.logger.log(`Success: Resolved reference for VIN: ${reference.vin}`);
-      }
-      return vehicle;
-    } catch (error) {
-      this.logger.error(`Failed to resolve reference for VIN: ${reference.vin}`, error.stack);
-      throw error;
-    }
-  }
+  // @ResolveReference()
+  // async resolveReference(reference: { __typename: string; vin: string }): Promise<Vehicle> {
+  //   this.logger.log(`Start: Resolving reference for vehicle with VIN: ${reference.vin}`);
+  //   try {
+  //     const vehicle = await this.vehicleInfoService.findVehicle(reference.vin);
+  //     if (!vehicle) {
+  //       this.logger.warn(`Reference resolution failed for VIN: ${reference.vin}`);
+  //     } else {
+  //       this.logger.log(`Success: Resolved reference for VIN: ${reference.vin}`);
+  //     }
+  //     return vehicle;
+  //   } catch (error) {
+  //     this.logger.error(`Failed to resolve reference for VIN: ${reference.vin}`, error.stack);
+  //     throw new InternalServerErrorException(`Failed to find vehicle`);
+  //   }
+  // }
 }

@@ -1,4 +1,5 @@
 import { flatten, Injectable, InternalServerErrorException, Logger, NotFoundException } from '@nestjs/common';
+import { error } from 'console';
 import * as fs from 'fs';
 import { ReadStream } from 'fs';
 import * as path from 'path';
@@ -28,15 +29,8 @@ export class VehicleImportExportService {
     }
   }
 
-
-
-
-
   async exportVehicles(minAge: number, email: string) {
-    if (!minAge || !email) {
-      throw new Error('Both minAge and email are required');
-    }
-
+  
     try {
       const job = await this.producerService.addJob('exportVehicle', { minAge, email });
       this.logger.log(`Export job queued successfully with ID ${job.id} for user ${email}`);

@@ -8,7 +8,7 @@ import * as path from 'path';
 import { CreateVehicleDto } from '../../vehicle-import-Export/DTO/createVehicleDTO';
 import { Logger } from '@nestjs/common';
 import axios from 'axios';
-import { Vehicle } from 'src/vehicle-info/entity/vehicle.entity.dto';
+import { Vehicle } from 'src/vehicle-info/entity/vehicle.entity';
 import { ConfigService } from '@nestjs/config';
 
 @Processor('vehicleQueue')
@@ -48,6 +48,7 @@ export class VehicleConsumer extends WorkerHost {
     this.logger.log(`[IMPORT VEHICLE] Processing file: ${filePath}`);
 
     const ext = path.extname(filePath).toLowerCase();
+    //To store rows extracted from the file
     let parsedData: any[] = [];
 
     try {

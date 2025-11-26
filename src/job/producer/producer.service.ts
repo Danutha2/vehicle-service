@@ -11,7 +11,7 @@ export class ProducerService {
   /**
    * Add any type of job to the queue.
    * @param jobName - The job type name (e.g., 'importVehicle', 'exportVehicle')
-   * @param payload - The job data (file info, filters, email, etc.)
+   * @param payload - The job data (file info, filters, email.)
    */
   async addJob(jobName: string, payload: Record<string, any>) {
     this.logger.log(`Adding job '${jobName}' to queue with payload: ${JSON.stringify(payload)}`);

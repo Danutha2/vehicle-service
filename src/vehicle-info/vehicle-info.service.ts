@@ -3,7 +3,7 @@ import { UpdateVehicleInfoInput } from './dto/update-vehicle-info.input';
 import { InjectRepository } from '@nestjs/typeorm';
 import { ILike, Like, Repository } from 'typeorm';
 import { PaginationInput } from './dto/paginationInput.dto';
-import { Vehicle } from './entity/vehicle.entity.dto';
+import { Vehicle } from './entity/vehicle.entity';
 
 @Injectable()
 export class VehicleInfoService {
@@ -23,17 +23,17 @@ export class VehicleInfoService {
       this.logger.log(`Fetched ${vehicles.length} vehicles`);
       return vehicles;
     } catch (error) {
-      this.logger.error('Failed to fetch vehicles', error.stack);
       throw error;
     }
   }
 
-  async findOne(identifier: number | string): Promise<Vehicle> {
+  async findVehicle(identifier: number | string): Promise<Vehicle> {
     this.logger.log(`Finding vehicle by ${typeof identifier === 'number' ? 'ID' : 'VIN'}: ${identifier}`);
     try {
       let vehicle: Vehicle | null = null;
 
       if (typeof identifier === 'number') {
+
         vehicle = await this.vehicleRepository.findOne({ where: { id: identifier } });
       } else {
         vehicle = await this.vehicleRepository.findOne({ where: { vin: identifier } });
@@ -47,7 +47,6 @@ export class VehicleInfoService {
       this.logger.log(`Vehicle found: ${JSON.stringify(vehicle)}`);
       return vehicle;
     } catch (error) {
-      if (error instanceof NotFoundException) throw error;
       throw error;
     }
   }
@@ -66,76 +65,62 @@ export class VehicleInfoService {
   //   }
   // }
 
-  async update(vin: string, updateVehicleInfoInput: UpdateVehicleInfoInput): Promise<Vehicle> {
-  this.logger.log(`Updating vehicle with VIN: ${vin}`);
-  try {
-    const existingVehicle = await this.findOne(vin);
+  async update(updateVehicleInfoInput: UpdateVehicleInfoInput): Promise<Vehicle> {
+    this.logger.log(`Updating vehicle with VIN: ${updateVehicleInfoInput.vin}`);
 
-    // preload combines existing entity with new data
-    const vehicle = await this.vehicleRepository.preload({
-      id: existingVehicle.id,
-      ...updateVehicleInfoInput,
-    });
+    const result = await this.vehicleRepository.update(
+      { vin: updateVehicleInfoInput.vin },
+      updateVehicleInfoInput,
+    );
 
-    if (!vehicle) {
-      this.logger.warn(`Vehicle with VIN ${vin} not found for update`);
-      throw new NotFoundException(`Vehicle with VIN ${vin} not found`);
+    if (result.affected === 0) {
+      throw new NotFoundException(`Vehicle with VIN ${updateVehicleInfoInput.vin} not found`);
     }
 
-    const updatedVehicle = await this.vehicleRepository.save(vehicle);
-    this.logger.log(`Vehicle updated successfully: ${JSON.stringify(updatedVehicle)}`);
-    return updatedVehicle;
-  } catch (error) {
-    this.logger.error(`Failed to update vehicle with VIN ${vin}`, error.stack);
-    throw new InternalServerErrorException(`Failed to update vehicle with VIN ${vin}`);
+    return this.findVehicle(updateVehicleInfoInput.vin);
   }
-}
-
 
   async remove(id: number): Promise<Vehicle> {
     this.logger.log(`Removing vehicle with ID: ${id}`);
     try {
-      const vehicle = await this.findOne(id);
+      const vehicle = await this.findVehicle(id);
       const deltedVehicle = await this.vehicleRepository.remove(vehicle);
       this.logger.log(`Vehicle with ID ${id} deleted successfully`);
       return deltedVehicle;
     } catch (error) {
-      if (error instanceof NotFoundException) throw error;
-      this.logger.error(`Failed to delete vehicle with ID ${id}`, error.stack);
-      throw new InternalServerErrorException(`Failed to delete vehicle with ID ${id}`);
+      throw error;
     }
   }
 
   async findAllPaginated(paginationInput: PaginationInput) {
-  this.logger.log('Fetching paginated vehicles');
+    this.logger.log('Fetching paginated vehicles');
 
-  try {
-    const page = Number(paginationInput.page) || 1;
-    const pageSize = Number(paginationInput.pageSize) || 100;
+    try {
+      const page = Number(paginationInput.page) || 1;
+      const pageSize = Number(paginationInput.pageSize) || 100;
 
-    const skip = (page - 1) * pageSize;
+      const skip = (page - 1) * pageSize;
 
-    this.logger.debug(`Pagination params - page: ${page}, pageSize: ${pageSize}, skip: ${skip}`);
+      this.logger.debug(`Pagination params - page: ${page}, pageSize: ${pageSize}, skip: ${skip}`);
 
-    const [vehicles, total] = await this.vehicleRepository.findAndCount({
-      order: { manufactured_date: 'ASC' },
-      take: pageSize,
-      skip,
-    });
+      const [vehicles, total] = await this.vehicleRepository.findAndCount({
+        order: { manufactured_date: 'ASC' },
+        take: pageSize,
+        skip,
+      });
 
-    this.logger.log(`Fetched ${vehicles.length} vehicles out of total ${total}`);
+      this.logger.log(`Fetched ${vehicles.length} vehicles out of total ${total}`);
 
-    return {
-      data: vehicles,
-      total,
-      page,
-      pageSize,
-    };
-  } catch (error) {
-    this.logger.error('Failed to fetch paginated vehicles', error.stack);
-    throw error;
+      return {
+        data: vehicles,
+        total,
+        page,
+        pageSize,
+      };
+    } catch (error) {
+      throw error;
+    }
   }
-}
 
 
   async searchByModel(keyword: string): Promise<Vehicle[]> {
@@ -148,12 +133,9 @@ export class VehicleInfoService {
       where: { car_model: ILike(`${searchPattern}%`) }
     });
 
+
     this.logger.log(`Found ${results.length} matching vehicles`);
     return results;
   }
-
-  forRecords(vin: string) {
-    throw new Error("Method not implemented.");
-  }
-
+  
 }
