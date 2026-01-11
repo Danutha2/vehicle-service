@@ -11,6 +11,19 @@ import axios from 'axios';
 import { Vehicle } from 'src/vehicle-info/entity/vehicle.entity';
 import { ConfigService } from '@nestjs/config';
 
+/**
+ * VehicleConsumer
+ * -----------------------------------
+ * Processes background jobs for vehicle import and export.
+ *
+ * Responsibilities:
+ * - Import vehicle data from CSV or Excel files
+ * - Export vehicle data to CSV files based on criteria
+ * - Notify users of import/export results via external service
+ * - Handles duplicate VINs and file parsing errors
+ *
+ * Queue: 'vehicleQueue'
+ */
 @Processor('vehicleQueue')
 export class VehicleConsumer extends WorkerHost {
   private readonly logger = new Logger(VehicleConsumer.name);
@@ -23,6 +36,14 @@ export class VehicleConsumer extends WorkerHost {
     super();
   }
 
+  /**
+   * Main job processor
+   *
+   * Determines the type of job (import/export) and calls the appropriate handler
+   *
+   * @param job Job data
+   * @returns Result of import or export operation
+   */
   async process(job: Job<any>) {
     this.logger.log(`[JOB RECEIVED] ${job.name} | ID: ${job.id}`);
 
@@ -42,17 +63,24 @@ export class VehicleConsumer extends WorkerHost {
     }
   }
 
+  /**
+   * Handle importing vehicles from a CSV or Excel file
+   *
+   * @param data Object containing:
+   *  - filePath: Path to the uploaded file
+   *  - email: User email for notifications
+   * @returns Object containing count of imported and skipped vehicles
+   * @throws Error if file parsing or saving fails
+   */
   private async handleImportVehicle(data: { filePath: string; email: string }) {
     const filePath = data.filePath;
     const email = data.email;
     this.logger.log(`[IMPORT VEHICLE] Processing file: ${filePath}`);
 
     const ext = path.extname(filePath).toLowerCase();
-    //To store rows extracted from the file
     let parsedData: any[] = [];
 
     try {
-      //  Read file
       if (ext === '.csv') {
         this.logger.debug(`[IMPORT VEHICLE] Parsing CSV file: ${filePath}`);
         const fileContent = fs.readFileSync(filePath, 'utf8');
@@ -94,20 +122,18 @@ export class VehicleConsumer extends WorkerHost {
         };
 
         try {
-        const vehicle = this.vehicleRepository.create(vehicleDto);
-        await this.vehicleRepository.save(vehicle);
-        importedCount++;
-      } catch (error) {
-        // Handle duplicate VIN
-        if (error.code === '23505') {
-          skippedCount++;
-          continue;
+          const vehicle = this.vehicleRepository.create(vehicleDto);
+          await this.vehicleRepository.save(vehicle);
+          importedCount++;
+        } catch (error) {
+          if (error.code === '23505') {
+            skippedCount++;
+            continue;
+          }
+          this.logger.error(`[IMPORT VEHICLE] Failed to import VIN: ${row.vin}`, error.stack);
         }
-        this.logger.error(`[IMPORT VEHICLE] Failed to import VIN: ${row.vin}`, error.stack);
-      }
       }
 
-      //  Construct message for user
       let message = '';
       if (importedCount > 0 && skippedCount > 0) {
         message = `🎉 Import Successful! ${importedCount} new vehicles added, ${skippedCount} duplicates skipped. 🚗`;
@@ -120,24 +146,31 @@ export class VehicleConsumer extends WorkerHost {
       }
 
       this.logger.log(`[IMPORT VEHICLE] ${message}`);
-      
       await this.notifyUser(email, message, path.basename(filePath));
 
       return { importedCount, skippedCount };
     } catch (error) {
-      
       this.logger.error(`[IMPORT VEHICLE ERROR] File: ${filePath}`, error.stack);
       await this.notifyUser(email, `❌ Import failed for file ${path.basename(filePath)}.`, null);
       throw error;
     }
   }
 
+  /**
+   * Handle exporting vehicles based on minimum age
+   *
+   * @param data Object containing:
+   *  - minAge: Minimum age of vehicles to export
+   *  - email: User email for notification
+   * @returns Object containing count of exported vehicles and file path
+   * @throws Error if export fails
+   */
   private async handleExportVehicle(data: { minAge: number; email: string }) {
     const { minAge, email } = data;
     this.logger.log(`[EXPORT VEHICLE] Job received | minAge=${minAge}, email=${email}`);
 
     try {
-      const vehicles = await this.vehicleRepository.find({ where: { age_of_vehicle: MoreThanOrEqual(minAge) } })
+      const vehicles = await this.vehicleRepository.find({ where: { age_of_vehicle: MoreThanOrEqual(minAge) } });
       if (vehicles.length === 0) {
         this.logger.warn(`[EXPORT VEHICLE] No vehicles found older than ${minAge} years`);
         await this.notifyUser(email, `No vehicles found older than ${minAge} years.`, null);
@@ -182,6 +215,14 @@ export class VehicleConsumer extends WorkerHost {
     }
   }
 
+  /**
+   * Notify user of import/export results via external service
+   *
+   * @param email User email
+   * @param message Notification message
+   * @param fileName File name attached (if any)
+   * @throws Error if notification service is not defined
+   */
   private async notifyUser(email: string, message: string, fileName: string | null) {
     const notificationServiceUrl = this.configService.get<string>('NOTIFICATION_SERVICE_URL');
 
@@ -198,6 +239,12 @@ export class VehicleConsumer extends WorkerHost {
     }
   }
 
+  /**
+   * Calculate the age of a vehicle from its manufactured date
+   *
+   * @param manufacturedDate Date the vehicle was manufactured
+   * @returns Age of the vehicle in years
+   */
   private calculateAge(manufacturedDate: Date): number {
     const today = new Date();
     let age = today.getFullYear() - manufacturedDate.getFullYear();
